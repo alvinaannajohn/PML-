@@ -1,0 +1,97 @@
+---
+title: "Prediction Assignment"
+author: "Alvina"
+date: "Friday, July 24, 2015"
+output: html_document
+---
+
+<b>PREPARING THE DATA:</b><br/>
+Set the working directory.
+```{r} 
+setwd("F:/Ph.D/coursera") 
+```
+The dataset is downloaded from coursera website and saved to the working directory.Load the caret library.<br/>
+```{r} 
+library(caret)
+```
+Read the training and test dataset from the working directory.<br/>
+```{r} 
+training<-read.csv("pml-training.csv",na.strings=c("NA","#DIV/0!"))
+testing<-read.csv("pml-testing.csv",na.strings=c("NA","#DIV/0!"))
+```
+<b>EXPLORING THE DATA:</b><br/>
+The number of observations and attributes in the training set is obtained.
+```{r} 
+dim(training)
+```
+The target variable is classe.
+```{r} 
+table(training$classe)
+```
+The number of classes in the dataset is noted.There are 5 classes and in that class A  is more in number.Among the 160 attributes there exists attributes which contains NA values and those which are not directly related to the target attribute.So those attributes are removed.<br/>
+```{r} 
+NA_Count = sapply(1:dim(training)[2],function(x)sum(is.na(training[,x])))
+NA_list = which(NA_Count>0)
+colnames(training[,c(1:7)])
+```
+After removing the above attributes the training dataset is again processed.<br/>
+```{r} 
+training = training[,-NA_list]
+training = training[,-c(1:7)]
+training$classe = factor(training$classe)
+```
+Similar processing is performed for testing dataset also.<b/>
+```{r} 
+testing = testing[,-NA_list]
+testing = testing[,-c(1:7)]
+``` 
+<b>CROSS VALIDATION:</b><br/>
+The problem is a classification problem.I have implemented random forest and regression method using 'rf' and 'rpart' in the caret package.The cross validation which is carried out is a 3-fold cross validation.The seed has been set to 1234.<br/>
+The random forest model is generated.<br/>
+
+```{r} 
+set.seed(1234)
+cv3 = trainControl(method="cv",number=3,allowParallel=TRUE,verboseIter=TRUE)
+modrf = train(classe~., data=training, method="rf",trControl=cv3)
+``` 
+The regression tree model is generated.<b/>
+```{r} 
+modtree = train(classe~.,data=training,method="rpart",trControl=cv3)
+``` 
+Checking the performance.Table for random forest model.</b>
+```{r} 
+prf=predict(modrf,training)
+ptree=predict(modtree,training)
+acc <- table(prf,training$classe)
+``` 
+Accuracy is calculated.<br/>
+```{r} 
+confusionMatrix(acc)
+``` 
+Table for regression tree model.<br/>
+```{r} 
+table(ptree,training$classe)
+``` 
+Checking the performance for testing data.<br/>
+```{r} 
+prf=predict(modrf,testing)
+ptree=predict(modtree,testing)
+table(prf,ptree)
+table(prf)
+``` 
+The results shows good accuracy for testing dataset with random forest model.From the above analysis I understood that random forest model is able to give better accuracy than regression tree model.<br/>
+<b>SUBMISSION:</b><br/>
+The random forest model is applied to testing dataset.<br/>
+```{r} 
+answers=predict(modrf,testing)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+answers
+``` 
+The predicted class for 20 test data are:
+B A B A A E D B A A B C B A E E A B B B
